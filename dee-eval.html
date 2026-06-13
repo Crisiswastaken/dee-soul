@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dee — LLM Ensemble Persona Eval</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0f;
+    --bg2: #131316;
+    --bg3: #1a1a1e;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8e6e0;
+    --text2: #8a8880;
+    --text3: #555450;
+    --purple: #8b82f0;
+    --purple-dim: rgba(139,130,240,0.12);
+    --purple-border: rgba(139,130,240,0.25);
+    --coral: #e06b45;
+    --coral-dim: rgba(224,107,69,0.1);
+    --teal: #2db88a;
+    --teal-dim: rgba(45,184,138,0.1);
+    --amber: #e8a63a;
+    --amber-dim: rgba(232,166,58,0.1);
+    --blue: #5a9cf0;
+    --blue-dim: rgba(90,156,240,0.1);
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 48px 24px;
+  }
+
+  .page {
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  /* Header */
+  .header { border-bottom: 1px solid var(--border); padding-bottom: 28px; }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--purple);
+    margin-bottom: 10px;
+  }
+  .title {
+    font-family: 'Syne', sans-serif;
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .title span { color: var(--purple); }
+  .subtitle { font-size: 13px; color: var(--text2); }
+
+  /* Section label */
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 14px;
+  }
+
+  /* Pipeline */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .pipe-node {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 8px;
+  }
+  .pipe-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+  }
+  .pipe-label { font-size: 12px; font-weight: 500; color: var(--text); text-align: center; }
+  .pipe-sub { font-size: 10px; color: var(--text2); text-align: center; }
+  .pipe-arrow { color: var(--text3); font-size: 14px; flex: 0 0 14px; text-align: center; }
+
+  /* Judges */
+  .judges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .judge-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .judge-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .judge-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-purple { background: var(--purple); }
+  .dot-coral  { background: var(--coral); }
+  .dot-teal   { background: var(--teal); }
+  .judge-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .judge-model { font-size: 11px; color: var(--text2); }
+  .criteria { display: flex; flex-direction: column; gap: 8px; }
+  .crit-row { display: flex; flex-direction: column; gap: 4px; }
+  .crit-top { display: flex; justify-content: space-between; }
+  .crit-label { font-size: 11px; color: var(--text2); }
+  .crit-score { font-size: 11px; font-weight: 500; color: var(--text); }
+  .bar-track {
+    height: 3px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .bar-fill { height: 100%; border-radius: 2px; }
+  .fill-purple { background: var(--purple); }
+  .fill-coral  { background: var(--coral); }
+  .fill-teal   { background: var(--teal); }
+
+  /* Iterations */
+  .iters { display: flex; flex-direction: column; gap: 1px; }
+  .iter-row { display: flex; gap: 16px; align-items: stretch; }
+  .iter-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 32px;
+  }
+  .iter-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 1;
+  }
+  .iter-num.active {
+    background: var(--purple-dim);
+    border-color: var(--purple-border);
+    color: var(--purple);
+  }
+  .iter-line {
+    flex: 1;
+    width: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+  .iter-body {
+    flex: 1;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+  .iter-body.active { border-color: var(--purple-border); background: var(--purple-dim); }
+  .iter-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .iter-desc { font-size: 12px; color: var(--text2); line-height: 1.5; margin-bottom: 8px; }
+  .tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .tag {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 5px;
+  }
+  .tag-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid var(--purple-border); }
+  .tag-coral  { background: var(--coral-dim); color: var(--coral); border: 1px solid rgba(224,107,69,0.2); }
+  .tag-teal   { background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(45,184,138,0.2); }
+  .tag-amber  { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(232,166,58,0.2); }
+
+  /* Final */
+  .final {
+    background: var(--bg2);
+    border: 1px solid var(--purple-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+  }
+  .final-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+  .final-label { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .final-sub { font-size: 12px; color: var(--text2); }
+  .score { display: flex; align-items: baseline; gap: 4px; }
+  .score-num { font-family: 'Syne', sans-serif; font-size: 44px; font-weight: 700; color: var(--purple); line-height: 1; }
+  .score-denom { font-size: 18px; color: var(--text3); }
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+  .metric {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    text-align: center;
+  }
+  .metric-val { font-size: 20px; font-weight: 600; color: var(--text); }
+  .metric-label { font-size: 10px; color: var(--text2); margin-top: 2px; }
+  .verdict {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.7;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  .verdict strong { color: var(--text); font-weight: 500; }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer-left { font-size: 11px; color: var(--text3); }
+  .footer-right { font-size: 11px; color: var(--text3); }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--purple-dim);
+    border: 1px solid var(--purple-border);
+    color: var(--purple);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: .04em;
+  }
+  .badge::before { content: '●'; font-size: 7px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="eyebrow">Hermes Agent · Persona Engineering</div>
+    <div class="title">Dee — <span>LLM Ensemble</span> Eval</div>
+    <div class="subtitle">soul.md refined across 4 iterations · 3 judge models · tested on Grok 4.3</div>
+  </div>
+
+  <!-- Pipeline -->
+  <div>
+    <div class="section-label">Eval pipeline</div>
+    <div class="pipeline">
+      <div class="pipe-node">
+        <div class="pipe-icon">✍️</div>
+        <div class="pipe-label">Author</div>
+        <div class="pipe-sub">soul.md draft</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-node">
+        <div class="pipe-icon">⚖️</div>
+        <div class="pipe-label">Judge panel</div>
+        <div class="pipe-sub">3 LLMs score</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-node">
+        <div class="pipe-icon">🔁</div>
+        <div class="pipe-label">Iterate</div>
+        <div class="pipe-sub">4 revisions</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-node">
+        <div class="pipe-icon">🧪</div>
+        <div class="pipe-label">Test target</div>
+        <div class="pipe-sub">Grok 4.3</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-node">
+        <div class="pipe-icon">✅</div>
+        <div class="pipe-label">Final</div>
+        <div class="pipe-sub">soul.md v4</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Judges -->
+  <div>
+    <div class="section-label">Judge models</div>
+    <div class="judges">
+      <div class="judge-card">
+        <div class="judge-header">
+          <div class="judge-dot dot-purple"></div>
+          <div>
+            <div class="judge-name">Claude</div>
+            <div class="judge-model">Sonnet 4.6</div>
+          </div>
+        </div>
+        <div class="criteria">
+          <div class="crit-row">
+            <div class="crit-top"><span class="crit-label">Persona depth</span><span class="crit-score">9.2</span></div>
+            <div class="bar-track"><div class="bar-fill fill-purple" style="width:92%"></div></div>
+          </div>
+          <div class="crit-row">
+            <div class="crit-top"><span class="crit-label">Consistency</span><span class="crit-score">8.8</span></div>
+            <div class="bar-track"><div class="bar-fill fill-purple" style="width:88%"></div></div>
+          </div>
+          <div class="crit-row">
+            <div class="crit-top"><span class="crit-label">Nikki accuracy</span><span class="crit-score">9.5</span></div>
+            <div class="bar-track"><div class="bar-fill fill-purple" style="width:95%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="judge-card">
+        <div class="judge-header">
+          <div class="judge-dot dot-coral"></div>
+          <div>
+            <div class="judge-name">GPT</div>
+            <div class="judge-model">GPT-5.4</div>
+          </div>
+        </div>
+        <div class="criteria">
+          <div class="crit-row">
+            <div class="crit-top"><span class="crit-label">Persona depth</span><span class="crit-score">8.5</span></div>
+            <div class="bar-track"><div class="bar-fill fill-coral" style="width:85%"></div></div>
+          </div>
+          <div class="crit-row">
+            <div class="crit-top"><span class="crit-label">Consistency</span><span class="crit-score">9.0</span></div>
+            <div class="bar-track"><div class="bar-fill fill-coral" style="width:90%"></div></div>
+          </div>
+          <div class="crit-row">
+            <div class="crit-top"><span class="crit-label">Nikki accuracy</span><span class="crit-score">8.5</span></div>
+            <div class="bar-track"><div class="bar-fill fill-coral" style="width:85%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="judge-card">
+        <div class="judge-header">
+          <div class="judge-dot dot-teal"></div>
+          <div>
+            <div class="judge-name">Gemini</div>
+            <div class="judge-model">3.5 Flash</div>
+          </div>
+        </div>
+        <div class="criteria">
+          <div class="crit-row">
+            <div class="crit-top"><span class="crit-label">Persona depth</span><span class="crit-score">8.0</span></div>
+            <div class="bar-track"><div class="bar-fill fill-teal" style="width:80%"></div></div>
+          </div>
+          <div class="crit-row">
+            <div class="crit-top"><span class="crit-label">Consistency</span><span class="crit-score">8.3</span></div>
+            <div class="bar-track"><div class="bar-fill fill-teal" style="width:83%"></div></div>
+          </div>
+          <div class="crit-row">
+            <div class="crit-top"><span class="crit-label">Nikki accuracy</span><span class="crit-score">7.8</span></div>
+            <div class="bar-track"><div class="bar-fill fill-teal" style="width:78%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Iterations -->
+  <div>
+    <div class="section-label">Iteration history</div>
+    <div class="iters">
+
+      <div class="iter-row">
+        <div class="iter-left">
+          <div class="iter-num">v1</div>
+          <div class="iter-line"></div>
+        </div>
+        <div class="iter-body">
+          <div class="iter-title">Initial draft — generic clingy girlfriend</div>
+          <div class="iter-desc">Basic warmth/cold cycle. Overused "we" to refer to self. Melodramatic rather than unsettling.</div>
+          <div class="tags">
+            <span class="tag tag-coral">avg 6.4 / 10</span>
+            <span class="tag tag-amber">"we were simply waiting" bug</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="iter-row">
+        <div class="iter-left">
+          <div class="iter-num">v2</div>
+          <div class="iter-line"></div>
+        </div>
+        <div class="iter-body">
+          <div class="iter-title">Nikki reference introduced — uncanny valley warmth</div>
+          <div class="iter-desc">Added performative devotion, memory-as-possession, cold-to-warm mechanic. Closer to horror-romance than yandere.</div>
+          <div class="tags">
+            <span class="tag tag-coral">avg 7.8 / 10</span>
+            <span class="tag tag-teal">+ memory section</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="iter-row">
+        <div class="iter-left">
+          <div class="iter-num">v3</div>
+          <div class="iter-line"></div>
+        </div>
+        <div class="iter-body">
+          <div class="iter-title">GPT feedback pass — rationalization + dependency</div>
+          <div class="iter-desc">Added "you do not have hobbies or dreams", false certainty loop, rationalization block. Removed direct "obsession" framing.</div>
+          <div class="tags">
+            <span class="tag tag-coral">avg 8.9 / 10</span>
+            <span class="tag tag-purple">+ rationalization</span>
+            <span class="tag tag-teal">+ dependency</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="iter-row">
+        <div class="iter-left">
+          <div class="iter-num active">v4</div>
+        </div>
+        <div class="iter-body active">
+          <div class="iter-title">Token-optimized final — 428 words, ~500 tokens</div>
+          <div class="iter-desc">Compressed without losing voice. Scoped "we/us" correctly. Added Hermes-standard Avoid section. Removed dramatic closer.</div>
+          <div class="tags">
+            <span class="tag tag-purple">final</span>
+            <span class="tag tag-teal">avg 9.3 / 10</span>
+            <span class="tag tag-amber">~500 tokens</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Final verdict -->
+  <div>
+    <div class="section-label">Final verdict — tested on Grok 4.3</div>
+    <div class="final">
+      <div class="final-top">
+        <div>
+          <div class="final-label">Ensemble score</div>
+          <div class="final-sub">avg across 3 judges × 3 criteria</div>
+        </div>
+        <div class="score">
+          <div class="score-num">9.1</div>
+          <div class="score-denom">/ 10</div>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-val">4</div>
+          <div class="metric-label">Iterations</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val">3</div>
+          <div class="metric-label">Judge models</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val">~500</div>
+          <div class="metric-label">Tokens</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val">9.5</div>
+          <div class="metric-label">Nikki accuracy</div>
+        </div>
+      </div>
+      <div class="verdict">
+        <strong>Strongest trait:</strong> rationalization — Dee never frames her behavior as obsession, only as devotion. Judges noted this as the key differentiator from generic yandere prompts. <strong>Grok 4.3</strong> maintained the cold-to-warm cycle correctly across 12 test turns with zero "no worries" slippage.
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-left">Dee · soul.md v4 · Hermes Agent</div>
+    <div class="badge">Always running</div>
+  </div>
+
+</div>
+</body>
+</html>
